@@ -14,7 +14,7 @@ use SensioLabs\Deptrac\Console\Application;
 
 class AstFileReferenceFileCache implements AstFileReferenceCache
 {
-    /** @var array<string, array> */
+    /** @var array<string, array{hash: string, reference: AstFileReference}> */
     private $cache;
     /** @var string */
     private $cacheFile;
@@ -74,7 +74,7 @@ class AstFileReferenceFileCache implements AstFileReferenceCache
         $this->parsedFiles[$filepath] = true;
 
         $this->cache[$filepath] = [
-            'hash' => sha1_file($filepath),
+            'hash' => (string) sha1_file($filepath),
             'reference' => $fileReference,
         ];
     }
@@ -95,6 +95,7 @@ class AstFileReferenceFileCache implements AstFileReferenceCache
             throw new FileCouldNotBeReadException($this->cacheFile);
         }
 
+        /** @var array{version: string, payload: array<string, array{hash: string, reference: string}>} $cache */
         $cache = json_decode($contents, true);
 
         $this->loaded = true;
@@ -103,7 +104,8 @@ class AstFileReferenceFileCache implements AstFileReferenceCache
             return;
         }
 
-        $this->cache = array_map(
+        /** @var array<string, array{hash: string, reference: AstFileReference}> $deserialized */
+        $deserialized = array_map(
             static function (array $data): array {
                 $data['reference'] = unserialize(
                     $data['reference'],
@@ -123,6 +125,8 @@ class AstFileReferenceFileCache implements AstFileReferenceCache
             },
             $cache['payload']
         );
+
+        $this->cache = $deserialized;
     }
 
     public function write(): void
